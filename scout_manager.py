@@ -8,16 +8,16 @@ class ScoutManager:
     """Manages background scout threads and collects their results."""
 
     SIMULATED_RESULTS = {
-        "calculate": {"data": "$1,250", "delay": 30},
-        "search": {"data": "Found 3 matching documents", "delay": 30},
+        "calculate": {"data": "$1,250", "delay": 20},
+        "search": {"data": "Found 3 matching documents", "delay": 10},
         "research": {
             "data": "Analysis complete: 5 key findings identified",
-            "delay": 45,
+            "delay": 15,
         },
-        "find": {"data": "Located item in warehouse B, shelf 14", "delay": 40},
+        "find": {"data": "Located item in warehouse B, shelf 14", "delay": 10},
         "order": {
             "data": "Order total: $1,250 (3 items, shipping included)",
-            "delay": 30,
+            "delay": 10,
         },
     }
 

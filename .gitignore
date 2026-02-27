@@ -9,3 +9,4 @@ dist/
 build/
 .ruff_cache/
 .claude/
+*.tape

@@ -10,6 +10,10 @@ The engine classifies user messages in real time, dispatches async work to backg
 
 ![demo](https://img.shields.io/badge/status-proof%20of%20concept-orange)
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Async Context Engine Demo" width="800">
+</p>
+
 ---
 
 ## How It Works
@@ -42,7 +46,7 @@ User Input
 ## Prerequisites
 
 - **Python 3.11+**
-- **[Ollama](https://ollama.com/)** running locally
+- **[Ollama](https://ollama.com/)** running locally with any model of your choice
 
 ## Quick Start
 
@@ -58,12 +62,19 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Pull the default model
-ollama pull gemini-3-flash-preview:cloud
+# Pull a model (any Ollama-compatible model works)
+ollama pull llama3.2:1b          # lightweight, runs on any machine
+# or: ollama pull mistral         # 7B, good general purpose
+# or: ollama pull gemma:7b        # 7B, strong conversational
 
 # Run
 python runner.py
 ```
+
+> **Note:** The default model is configured in `graph.py`. Change it to whichever model you pulled:
+> ```python
+> llm = ChatOllama(model="your-model-name")
+> ```
 
 ## Running Tests
 
@@ -71,6 +82,22 @@ python runner.py
 pip install pytest
 python -m pytest tests/ -v
 ```
+
+---
+
+## Simulated Async Tasks
+
+The ScoutManager simulates background work with predefined tasks. Use these example prompts to trigger async behavior:
+
+| Example Prompt | Keyword | Simulated Result | Delay |
+|---|---|---|---|
+| `"calculate the total for Order Alpha"` | `calculate` | `$1,250` | 20s |
+| `"search for documents related to Q4"` | `search` | `Found 3 matching documents` | 10s |
+| `"research the latest AI trends"` | `research` | `Analysis complete: 5 key findings identified` | 15s |
+| `"find the nearest warehouse with stock"` | `find` | `Located item in warehouse B, shelf 14` | 10s |
+| `"order 3 units of Widget Pro"` | `order` | `Order total: $1,250 (3 items, shipping included)` | 10s |
+
+Any other async keyword falls back to a generic result with a 20s delay.
 
 ---
 
@@ -115,14 +142,8 @@ Everything else goes through the sync conversational path.
 
 | Setting | Default | Description |
 |---|---|---|
-| `model` | `gemini-3-flash-preview:cloud` | Ollama model (change in `graph.py`) |
+| `model` | `gemini-3-flash-preview:cloud` | Any Ollama model (change in `graph.py`) |
 | `poll_interval` | `5s` | How often the poller checks for results |
-
-To use a different model, edit the `llm` variable in `graph.py`:
-
-```python
-llm = ChatOllama(model="your-model-name")
-```
 
 ---
 
