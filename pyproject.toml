@@ -1,0 +1,27 @@
+[project]
+name = "async-context-engine"
+version = "3.0.0"
+description = "Context-aware async task orchestration powered by LangGraph"
+requires-python = ">=3.11"
+license = "MIT"
+readme = "README.md"
+authors = [
+    { name = "Sagar Mainkar" },
+]
+dependencies = [
+    "langgraph>=1.0",
+    "langchain-ollama>=1.0",
+    "python-dotenv>=1.0",
+    "rich>=14.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+]
+
+[project.urls]
+Repository = "https://github.com/sagar-catomz/async-context-engine"
+
+[project.scripts]
+async-engine = "runner:main"

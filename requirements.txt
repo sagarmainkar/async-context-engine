@@ -1,0 +1,4 @@
+langgraph>=1.0
+langchain-ollama>=1.0
+python-dotenv>=1.0
+rich>=14.0
