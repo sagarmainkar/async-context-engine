@@ -1,6 +1,6 @@
 # Async Context Engine
 
-[![GitHub stars](https://img.shields.io/github/stars/sagar-catomz/async-context-engine?style=social)](https://github.com/sagar-catomz/async-context-engine/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/sagarmainkar/async-context-engine?style=social)](https://github.com/sagarmainkar/async-context-engine/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
@@ -48,7 +48,7 @@ User Input
 
 ```bash
 # Clone the repo
-git clone https://github.com/sagar-catomz/async-context-engine.git
+git clone https://github.com/sagarmainkar/async-context-engine.git
 cd async-context-engine
 
 # Create virtual environment
