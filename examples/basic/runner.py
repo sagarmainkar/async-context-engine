@@ -13,6 +13,16 @@ console = Console()
 config = {"configurable": {"thread_id": f"session-{uuid.uuid4().hex[:8]}"}}
 
 
+def display_output(output: dict) -> None:
+    """Callback for the poller — renders graph output in the terminal."""
+    if "conductor" in output:
+        msg = output["conductor"]["messages"][-1]
+        content = msg.content if hasattr(msg, "content") else msg.get("content", "")
+        console.print(
+            Panel(content, title="[bold magenta]Conductor[/bold magenta]", border_style="magenta")
+        )
+
+
 def main():
     console.print()
     console.print(
@@ -26,7 +36,7 @@ def main():
     console.print("[dim]Type your messages. Async tasks run in the background.[/dim]")
     console.print("[dim]Type 'quit' to exit.[/dim]\n")
 
-    poller = AsyncPoller(store=store, graph=graph, config=config, interval=5)
+    poller = AsyncPoller(store=store, graph=graph, config=config, interval=5, on_result=display_output)
     poller.start()
 
     while True:

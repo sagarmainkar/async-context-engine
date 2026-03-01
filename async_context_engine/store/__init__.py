@@ -4,6 +4,12 @@ from async_context_engine.models import TaskRecord
 
 
 class TaskStore(ABC):
+    """Abstract persistence backend for task records.
+
+    Implement this to plug in your own storage (Postgres, Redis, etc.).
+    The library ships ``InMemoryTaskStore`` and ``FileTaskStore``.
+    """
+
     @abstractmethod
     def create_task(self, record: TaskRecord) -> None:
         """Persist a new task record."""
@@ -20,12 +26,12 @@ class TaskStore(ABC):
 
     @abstractmethod
     def get_task(self, task_id: str) -> TaskRecord | None:
-        """Retrieve a single task by ID."""
+        """Retrieve a single task by ID, or None if not found."""
 
     @abstractmethod
     def get_tasks_by_thread(self, thread_id: str) -> list[TaskRecord]:
-        """Get all tasks for a given thread/session."""
+        """Return all tasks belonging to a conversation thread."""
 
     @abstractmethod
     def get_tasks_by_status(self, thread_id: str, status: str) -> list[TaskRecord]:
-        """Get tasks filtered by status within a thread."""
+        """Return tasks matching a specific status within a thread."""

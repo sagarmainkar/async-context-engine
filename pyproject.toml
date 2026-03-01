@@ -12,6 +12,26 @@ readme = "README.md"
 authors = [
     { name = "Sagar Mainkar" },
 ]
+keywords = [
+    "langgraph",
+    "langchain",
+    "async",
+    "agents",
+    "llm",
+    "context-reentry",
+    "background-tasks",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
 dependencies = [
     "langgraph>=1.0",
 ]
@@ -27,7 +47,13 @@ examples = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/sagarmainkar/async-context-engine"
 Repository = "https://github.com/sagarmainkar/async-context-engine"
+Documentation = "https://github.com/sagarmainkar/async-context-engine/blob/main/docs/guide.md"
+Issues = "https://github.com/sagarmainkar/async-context-engine/issues"
 
 [tool.setuptools.packages.find]
 include = ["async_context_engine*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

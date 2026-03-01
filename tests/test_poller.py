@@ -32,6 +32,61 @@ def test_poller_detects_completed_task():
     assert results_buffer[0]["result"] == "Done!"
 
 
+def test_poller_on_result_callback():
+    """on_result callback receives each output chunk from graph.stream."""
+    store = InMemoryTaskStore()
+    task = dispatch_task(store, thread_id="thread-a", description="Test task")
+    update_task_result(store, task_id=task.task_id, result="Done!")
+
+    mock_graph = MagicMock()
+    stream_output = [{"conductor": {"messages": ["hello"]}}]
+    mock_graph.stream.return_value = stream_output
+    config = {"configurable": {"thread_id": "thread-a"}}
+
+    received = []
+    poller = AsyncPoller(
+        store=store, graph=mock_graph, config=config, interval=1,
+        on_result=lambda output: received.append(output),
+    )
+    poller.start()
+    time.sleep(2)
+    poller.stop()
+
+    assert len(received) == 1
+    assert received[0] == {"conductor": {"messages": ["hello"]}}
+
+
+def test_poller_delivers_each_result_individually():
+    """When multiple tasks complete, each gets its own graph run."""
+    store = InMemoryTaskStore()
+    task1 = dispatch_task(store, thread_id="thread-a", description="Task 1")
+    task2 = dispatch_task(store, thread_id="thread-a", description="Task 2")
+    update_task_result(store, task_id=task1.task_id, result="Result 1")
+    update_task_result(store, task_id=task2.task_id, result="Result 2")
+
+    mock_graph = MagicMock()
+    mock_graph.stream.return_value = [{"conductor": {"messages": ["ok"]}}]
+    config = {"configurable": {"thread_id": "thread-a"}}
+
+    received = []
+    poller = AsyncPoller(
+        store=store, graph=mock_graph, config=config, interval=1,
+        on_result=lambda output: received.append(output),
+    )
+    poller.start()
+    time.sleep(2)
+    poller.stop()
+
+    # Each task should trigger its own update_state + stream call
+    assert mock_graph.update_state.call_count == 2
+    assert mock_graph.stream.call_count == 2
+
+    # Each update_state should have exactly 1 result
+    for call in mock_graph.update_state.call_args_list:
+        results_buffer = call[0][1]["results_buffer"]
+        assert len(results_buffer) == 1
+
+
 def test_poller_ignores_pending_tasks():
     """Poller does NOT trigger for tasks that are still pending."""
     store = InMemoryTaskStore()

@@ -1,151 +1,123 @@
 # Async Context Engine
 
-[![GitHub stars](https://img.shields.io/github/stars/sagarmainkar/async-context-engine?style=social)](https://github.com/sagarmainkar/async-context-engine/stargazers)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://img.shields.io/pypi/v/async-context-engine.svg)](https://pypi.org/project/async-context-engine/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **context-aware async task orchestration engine** built with [LangGraph](https://github.com/langchain-ai/langgraph). It demonstrates how to handle long-running background tasks in a conversational AI system — without blocking the user.
+Plug-and-play **async context re-entry** for [LangGraph](https://github.com/langchain-ai/langgraph) agents.
 
-The engine classifies user messages in real time, dispatches async work to background scouts, and proactively delivers results back into the conversation when ready.
+Dispatch long-running tasks to external systems, let the user keep chatting, and deliver results back into the conversation automatically — without blocking.
 
-![demo](https://img.shields.io/badge/status-proof%20of%20concept-orange)
+## The Problem
 
-<p align="center">
-  <img src="assets/demo.gif" alt="Async Context Engine Demo" width="800">
-</p>
-
----
+LangGraph agents are synchronous. When a task takes 10 seconds or 5 minutes, you have two bad options: block the user, or lose the result. This library gives you a third option: **dispatch, continue, re-enter**.
 
 ## How It Works
 
 ```
-User Input
-    |
-    v
- classifier()  ──── checks for async keywords + pending results
-    |
-    ├──► [ASYNC] ── dispatcher ── ScoutManager.dispatch()
-    |                                   |
-    |                              background thread
-    |                                   |
-    |                              result queue
-    |                                   |
-    |                              result_poller (5s interval)
-    |                                   |
-    └──► [SYNC] ─── conductor ◄── delivers results via LLM
-                        |
-                     response
+1. User asks for something slow     →  Your graph dispatches the task
+2. Library tracks it in a TaskStore  →  User keeps chatting normally
+3. External system finishes work     →  Calls update_task_result()
+4. Built-in poller detects it        →  Re-enters the graph automatically
+5. Result appears in conversation    →  Without the user asking again
 ```
 
-**Sync path** — Direct LLM response for regular conversation.
+## Install
 
-**Async path** — The dispatcher acknowledges the task, a background scout processes it, and the conductor delivers results proactively when they land.
+```bash
+pip install async-context-engine
 
----
-
-## Prerequisites
-
-- **Python 3.11+**
-- **[Ollama](https://ollama.com/)** running locally with any model of your choice
+# Or with uv (recommended):
+uv add async-context-engine
+```
 
 ## Quick Start
 
+**1. Extend your state:**
+
+```python
+from async_context_engine import AsyncTaskState
+
+class MyState(AsyncTaskState):
+    messages: Annotated[list[dict], operator.add]
+```
+
+**2. Dispatch tasks in your graph:**
+
+```python
+from async_context_engine import dispatch_task
+
+def dispatcher(state, config):
+    task = dispatch_task(store, config["configurable"]["thread_id"], "calculate total")
+    my_system.run(task.task_id, "calculate total")  # Send to your worker
+    return {"messages": [...], "task_records": {task.task_id: task}}
+```
+
+**3. Report results from your external system:**
+
+```python
+from async_context_engine import update_task_result
+
+update_task_result(store, task_id="abc-123", result="$1,250")
+```
+
+**4. Start the poller:**
+
+```python
+from async_context_engine import AsyncPoller
+
+poller = AsyncPoller(store=store, graph=graph, config=config, interval=5, on_result=display)
+poller.start()
+```
+
+That's it. Results flow back into the conversation automatically.
+
+## What You Build vs. What the Library Handles
+
+| You | Library |
+|---|---|
+| Your LangGraph graph (nodes, edges, LLM) | Task ID generation |
+| Decide what's async (classifier) | Task persistence (TaskStore) |
+| Execute the actual work (sub-agents, APIs) | Background polling |
+| Call `dispatch_task()` and `update_task_result()` | Graph re-entry with results |
+| Display output (`on_result` callback) | Deduplication (each result delivered once) |
+
+## Documentation
+
+**[Developer Guide](docs/guide.md)** — Comprehensive walkthrough of every concept, the full API reference, architecture diagrams, and step-by-step integration instructions.
+
+## Shipped Components
+
+| Component | Description |
+|---|---|
+| `TaskRecord` | Dataclass representing a tracked task |
+| `TaskStore` | ABC for pluggable persistence |
+| `InMemoryTaskStore` | Dict-backed store for tests |
+| `FileTaskStore` | JSON file store for prototyping |
+| `AsyncTaskState` | LangGraph state mixin (extend this) |
+| `dispatch_task()` | Create a pending task in the store |
+| `update_task_result()` | Mark a task complete/failed (called from external systems) |
+| `has_pending_results()` | Check if results are waiting in state |
+| `AsyncPoller` | Background thread that polls and re-enters the graph |
+
+## Running the Example
+
 ```bash
-# Clone the repo
 git clone https://github.com/sagarmainkar/async-context-engine.git
 cd async-context-engine
 
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
+# Install everything (library + example dependencies)
+uv sync --extra examples
 
-# Install dependencies
-pip install -r requirements.txt
+# Start Ollama (required for the example LLM)
+ollama serve
 
-# Pull a model (any Ollama-compatible model works)
-ollama pull llama3.2:1b          # lightweight, runs on any machine
-# or: ollama pull mistral         # 7B, good general purpose
-# or: ollama pull gemma:7b        # 7B, strong conversational
-
-# Run
-python runner.py
+# Run the demo
+cd examples/basic
+uv run runner.py
 ```
 
-> **Note:** The default model is configured in `graph.py`. Change it to whichever model you pulled:
-> ```python
-> llm = ChatOllama(model="your-model-name")
-> ```
-
-## Running Tests
-
-```bash
-pip install pytest
-python -m pytest tests/ -v
-```
-
----
-
-## Simulated Async Tasks
-
-The ScoutManager simulates background work with predefined tasks. Use these example prompts to trigger async behavior:
-
-| Example Prompt | Keyword | Simulated Result | Delay |
-|---|---|---|---|
-| `"calculate the total for Order Alpha"` | `calculate` | `$1,250` | 20s |
-| `"search for documents related to Q4"` | `search` | `Found 3 matching documents` | 10s |
-| `"research the latest AI trends"` | `research` | `Analysis complete: 5 key findings identified` | 15s |
-| `"find the nearest warehouse with stock"` | `find` | `Located item in warehouse B, shelf 14` | 10s |
-| `"order 3 units of Widget Pro"` | `order` | `Order total: $1,250 (3 items, shipping included)` | 10s |
-
-Any other async keyword falls back to a generic result with a 20s delay.
-
----
-
-## Project Structure
-
-```
-async-context-engine/
-├── runner.py           # Interactive CLI with Rich console UI
-├── graph.py            # LangGraph workflow — classifier, dispatcher, conductor
-├── state.py            # State schema, Task dataclass, async detection
-├── scout_manager.py    # Background task processing with threads + queue
-├── tests/
-│   ├── test_graph.py
-│   ├── test_state.py
-│   └── test_scout_manager.py
-├── pyproject.toml
-├── requirements.txt
-└── README.md
-```
-
-## Key Concepts
-
-| Component | Role |
-|---|---|
-| **Classifier** | Routes each message to sync or async path based on keyword detection |
-| **Dispatcher** | Acknowledges async tasks and hands them to the ScoutManager |
-| **ScoutManager** | Runs background threads that simulate long-running work |
-| **Conductor** | Core LLM node — handles conversation and delivers background results |
-| **Result Poller** | Daemon thread that checks for completed tasks every 5 seconds |
-
-## Async Keywords
-
-Messages containing these words are routed to the async path:
-
-`calculate` · `find` · `search` · `order` · `research`
-
-Everything else goes through the sync conversational path.
-
----
-
-## Configuration
-
-| Setting | Default | Description |
-|---|---|---|
-| `model` | `gemini-3-flash-preview:cloud` | Any Ollama model (change in `graph.py`) |
-| `poll_interval` | `5s` | How often the poller checks for results |
-
----
+> **No venv creation needed.** `uv sync` creates the `.venv` automatically, resolves all dependencies, and installs the library in editable mode — one command, everything works.
 
 ## License
 

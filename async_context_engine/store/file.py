@@ -8,16 +8,24 @@ from async_context_engine.store import TaskStore
 
 
 class FileTaskStore(TaskStore):
+    """JSON file-backed task store. Thread-safe via a threading lock.
+
+    Good for prototyping and single-machine deployments.
+    For production, implement ``TaskStore`` with a database backend.
+    """
+
     def __init__(self, path: str | Path):
         self._path = Path(path)
         self._lock = threading.Lock()
 
     def _read(self) -> dict:
+        """Load all task data from the JSON file."""
         if not self._path.exists():
             return {}
         return json.loads(self._path.read_text())
 
     def _write(self, data: dict) -> None:
+        """Write task data to the JSON file, creating parent dirs if needed."""
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._path.write_text(json.dumps(data, default=str, indent=2))
 
@@ -46,6 +54,7 @@ class FileTaskStore(TaskStore):
         }
 
     def create_task(self, record: TaskRecord) -> None:
+        """Persist a new task record to disk."""
         with self._lock:
             data = self._read()
             data[record.task_id] = self._from_record(record)
@@ -58,6 +67,7 @@ class FileTaskStore(TaskStore):
         result: str | None = None,
         error: str | None = None,
     ) -> None:
+        """Update a task's status, result, or error on disk."""
         with self._lock:
             data = self._read()
             entry = data[task_id]
@@ -70,6 +80,7 @@ class FileTaskStore(TaskStore):
             self._write(data)
 
     def get_task(self, task_id: str) -> TaskRecord | None:
+        """Look up a task by ID from the JSON file."""
         with self._lock:
             data = self._read()
             entry = data.get(task_id)
@@ -78,6 +89,7 @@ class FileTaskStore(TaskStore):
             return self._to_record(entry)
 
     def get_tasks_by_thread(self, thread_id: str) -> list[TaskRecord]:
+        """Return all tasks for a given thread from the JSON file."""
         with self._lock:
             data = self._read()
             return [
@@ -87,6 +99,7 @@ class FileTaskStore(TaskStore):
             ]
 
     def get_tasks_by_status(self, thread_id: str, status: str) -> list[TaskRecord]:
+        """Return tasks matching a status within a thread from the JSON file."""
         with self._lock:
             data = self._read()
             return [

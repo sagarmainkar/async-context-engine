@@ -10,7 +10,11 @@ def dispatch_task(
     thread_id: str,
     description: str,
 ) -> TaskRecord:
-    """Create a new task record with status='pending' and persist it."""
+    """Create a new task with status='pending', persist it, and return the record.
+
+    The caller should send ``record.task_id`` to the external system
+    so it can later call ``update_task_result()`` with the same ID.
+    """
     now = datetime.now()
     record = TaskRecord(
         task_id=str(uuid.uuid4()),
@@ -32,7 +36,12 @@ def update_task_result(
     result: str | None = None,
     error: str | None = None,
 ) -> None:
-    """Update a task in the store. Called from external systems."""
+    """Mark a task as completed (or failed) in the store.
+
+    Designed to be called from external systems or sub-agents.
+    Pass ``result`` for success or ``error`` for failure.
+    The poller will pick up the change and re-enter the graph.
+    """
     if error is not None:
         store.update_task(task_id, status="failed", error=error)
     else:

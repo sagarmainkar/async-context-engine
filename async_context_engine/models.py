@@ -4,6 +4,12 @@ from datetime import datetime
 
 @dataclass
 class TaskRecord:
+    """Represents a single async task tracked by the engine.
+
+    Lifecycle: pending → running → completed | failed.
+    Created by ``dispatch_task()``, updated by ``update_task_result()``.
+    """
+
     task_id: str
     thread_id: str
     status: str  # "pending" | "running" | "completed" | "failed"
