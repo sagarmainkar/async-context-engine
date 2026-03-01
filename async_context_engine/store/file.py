@@ -1,4 +1,5 @@
 import json
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from async_context_engine.store import TaskStore
 class FileTaskStore(TaskStore):
     def __init__(self, path: str | Path):
         self._path = Path(path)
+        self._lock = threading.Lock()
 
     def _read(self) -> dict:
         if not self._path.exists():
@@ -44,9 +46,10 @@ class FileTaskStore(TaskStore):
         }
 
     def create_task(self, record: TaskRecord) -> None:
-        data = self._read()
-        data[record.task_id] = self._from_record(record)
-        self._write(data)
+        with self._lock:
+            data = self._read()
+            data[record.task_id] = self._from_record(record)
+            self._write(data)
 
     def update_task(
         self,
@@ -55,35 +58,39 @@ class FileTaskStore(TaskStore):
         result: str | None = None,
         error: str | None = None,
     ) -> None:
-        data = self._read()
-        entry = data[task_id]
-        entry["status"] = status
-        if result is not None:
-            entry["result"] = result
-        if error is not None:
-            entry["error"] = error
-        entry["updated_at"] = datetime.now().isoformat()
-        self._write(data)
+        with self._lock:
+            data = self._read()
+            entry = data[task_id]
+            entry["status"] = status
+            if result is not None:
+                entry["result"] = result
+            if error is not None:
+                entry["error"] = error
+            entry["updated_at"] = datetime.now().isoformat()
+            self._write(data)
 
     def get_task(self, task_id: str) -> TaskRecord | None:
-        data = self._read()
-        entry = data.get(task_id)
-        if entry is None:
-            return None
-        return self._to_record(entry)
+        with self._lock:
+            data = self._read()
+            entry = data.get(task_id)
+            if entry is None:
+                return None
+            return self._to_record(entry)
 
     def get_tasks_by_thread(self, thread_id: str) -> list[TaskRecord]:
-        data = self._read()
-        return [
-            self._to_record(e)
-            for e in data.values()
-            if e["thread_id"] == thread_id
-        ]
+        with self._lock:
+            data = self._read()
+            return [
+                self._to_record(e)
+                for e in data.values()
+                if e["thread_id"] == thread_id
+            ]
 
     def get_tasks_by_status(self, thread_id: str, status: str) -> list[TaskRecord]:
-        data = self._read()
-        return [
-            self._to_record(e)
-            for e in data.values()
-            if e["thread_id"] == thread_id and e["status"] == status
-        ]
+        with self._lock:
+            data = self._read()
+            return [
+                self._to_record(e)
+                for e in data.values()
+                if e["thread_id"] == thread_id and e["status"] == status
+            ]

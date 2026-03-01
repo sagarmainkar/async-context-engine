@@ -1,7 +1,10 @@
+import logging
 import threading
 import time
 
 from async_context_engine.store import TaskStore
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncPoller:
@@ -39,7 +42,10 @@ class AsyncPoller:
             time.sleep(self._interval)
             if not self._running:
                 break
-            self._check_and_deliver()
+            try:
+                self._check_and_deliver()
+            except Exception:
+                logger.exception("Poller error during check_and_deliver")
 
     def _check_and_deliver(self) -> None:
         thread_id = self._config["configurable"]["thread_id"]
@@ -65,7 +71,8 @@ class AsyncPoller:
         self._graph.update_state(self._config, {"results_buffer": new_results})
 
         # Trigger graph run with synthetic message
-        self._graph.stream(
+        for _ in self._graph.stream(
             {"messages": [{"role": "user", "content": "[system: background task completed]"}]},
             self._config,
-        )
+        ):
+            pass

@@ -1,72 +1,43 @@
 import time
-from state import Task
+from async_context_engine import dispatch_task, InMemoryTaskStore
 from scout_manager import ScoutManager
 
 
 def test_dispatch_starts_background_work():
-    sm = ScoutManager()
-    task = Task.create(user_query="calculate total for Order Alpha")
-    sm.dispatch(task)
-    # Scout is running — nothing completed yet
-    assert sm.get_completed() == []
+    store = InMemoryTaskStore()
+    sm = ScoutManager(store=store)
+    task = dispatch_task(store, thread_id="thread-a", description="calculate total")
+    sm.dispatch(task.task_id, "calculate total")
+    # Scout is running — task still pending
+    record = store.get_task(task.task_id)
+    assert record.status == "pending"
 
 
-def test_scout_completes_and_returns_result():
-    """Use a short delay to verify end-to-end: dispatch -> wait -> get_completed."""
-    sm = ScoutManager()
-    task = Task.create(user_query="calculate total")
-    # Override delay for testing
+def test_scout_completes_and_updates_store():
+    store = InMemoryTaskStore()
+    sm = ScoutManager(store=store)
     sm.SIMULATED_RESULTS = {"calculate": {"data": "$1,250", "delay": 1}}
-    sm.dispatch(task)
-    time.sleep(2)  # Wait for scout to finish
-    completed = sm.get_completed()
-    assert len(completed) == 1
-    assert completed[0]["task_id"] == task.task_id
-    assert completed[0]["user_query"] == "calculate total"
-    assert completed[0]["data"] == "$1,250"
-
-
-def test_get_completed_drains_queue():
-    """After get_completed(), the queue should be empty."""
-    sm = ScoutManager()
-    task = Task.create(user_query="calculate total")
-    sm.SIMULATED_RESULTS = {"calculate": {"data": "$1,250", "delay": 1}}
-    sm.dispatch(task)
+    task = dispatch_task(store, thread_id="thread-a", description="calculate total")
+    sm.dispatch(task.task_id, "calculate total")
     time.sleep(2)
-    first = sm.get_completed()
-    assert len(first) == 1
-    second = sm.get_completed()
-    assert second == []
+    record = store.get_task(task.task_id)
+    assert record.status == "completed"
+    assert record.result == "$1,250"
 
 
 def test_multiple_tasks_complete_independently():
-    sm = ScoutManager()
+    store = InMemoryTaskStore()
+    sm = ScoutManager(store=store)
     sm.SIMULATED_RESULTS = {
         "calculate": {"data": "$1,250", "delay": 1},
         "search": {"data": "Found 3 docs", "delay": 1},
     }
-    task1 = Task.create(user_query="calculate total")
-    time.sleep(0.01)  # Avoid task_id collision (timestamp-based IDs)
-    task2 = Task.create(user_query="search for reports")
-    sm.dispatch(task1)
-    sm.dispatch(task2)
+    t1 = dispatch_task(store, thread_id="thread-a", description="calculate total")
+    t2 = dispatch_task(store, thread_id="thread-a", description="search for reports")
+    sm.dispatch(t1.task_id, "calculate total")
+    sm.dispatch(t2.task_id, "search for reports")
     time.sleep(3)
-    completed = sm.get_completed()
-    assert len(completed) == 2
-    task_ids = {r["task_id"] for r in completed}
-    assert task1.task_id in task_ids
-    assert task2.task_id in task_ids
-
-
-def test_dispatch_with_no_keyword_match_uses_fallback():
-    """Fallback: no keyword match still dispatches without crashing."""
-    sm = ScoutManager()
-    task = Task.create(user_query="do something unusual")
-    sm.SIMULATED_RESULTS = {}  # No keywords to match
-    sm.FALLBACK_DELAY = 1  # Override so test doesn't take 20s
-    sm.dispatch(task)
-    time.sleep(2)
-    completed = sm.get_completed()
-    assert len(completed) == 1
-    assert completed[0]["task_id"] == task.task_id
-    assert completed[0]["data"] == "Task completed (generic result)"
+    r1 = store.get_task(t1.task_id)
+    r2 = store.get_task(t2.task_id)
+    assert r1.status == "completed"
+    assert r2.status == "completed"
