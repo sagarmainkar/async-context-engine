@@ -8,6 +8,8 @@ Plug-and-play **async context re-entry** for [LangGraph](https://github.com/lang
 
 Dispatch long-running tasks to external systems, let the user keep chatting, and deliver results back into the conversation automatically — without blocking.
 
+![Demo](assets/demo.gif)
+
 ## The Problem
 
 LangGraph agents are synchronous. When a task takes 10 seconds or 5 minutes, you have two bad options: block the user, or lose the result. This library gives you a third option: **dispatch, continue, re-enter**.

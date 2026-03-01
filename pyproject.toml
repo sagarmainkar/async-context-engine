@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "async-context-engine"
-version = "4.0.0"
+version = "0.1.0"
 description = "Plug-and-play async context re-entry for LangGraph agents"
 requires-python = ">=3.11"
 license = "MIT"
