@@ -24,3 +24,6 @@ examples = [
 
 [project.urls]
 Repository = "https://github.com/sagarmainkar/async-context-engine"
+
+[tool.setuptools.packages.find]
+include = ["async_context_engine*"]
